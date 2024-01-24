@@ -1,0 +1,22 @@
+{
+  "include": [
+    "src",
+    "../../shared"
+  ],
+  "compilerOptions": {
+    "outDir": "dist",
+    "target": "ES6",
+    "module": "ES6",
+    "strict": true,
+    "declaration": true,
+    "moduleResolution": "node",
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "baseUrl": ".",
+    "paths": {
+      "@shared/*": [
+        "../../shared/*"
+      ]
+    }
+  }
+}
