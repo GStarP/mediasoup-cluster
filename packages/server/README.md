@@ -7,3 +7,9 @@
 This project aims to provide horizental scaling ability for mediasoup.
 
 Many design and knowledge come from [owt-server](https://github.com/open-webrtc-toolkit/owt-server).
+
+## Mediasoup build fails due to network
+
+First, try to use proxy.
+
+If build still fails, download prebuild mannually and move it to `node_modules/mediasoup/out/Release`.

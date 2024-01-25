@@ -4,6 +4,6 @@
   },
   "producerWorkerNum": 2,
   "listenIP": "0.0.0.0",
-  "announcedIP": "172.28.136.174",
-  "portRange": [30000, 30010]
+  "announcedIP": "172.24.212.34",
+  "port": 30000
 }

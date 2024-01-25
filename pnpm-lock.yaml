@@ -110,7 +110,7 @@ importers:
         specifier: ^9.0.2
         version: 9.0.2
       mediasoup:
-        specifier: ^3.13.9
+        specifier: ^3.13.16
         version: 3.13.16
       socket.io:
         specifier: ^4.7.2

@@ -28,8 +28,7 @@ async function runMediaAgent() {
   )
   // routerId => worker
   const workers: Map<string, Worker<WorkerAppData>> = new Map()
-  // TODO: ignore portRange[1]
-  let port = config.portRange[0]
+  let port = config.port
   for (let i = 0; i < cpus().length; i++) {
     // create producer worker first
     const type =
