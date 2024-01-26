@@ -43,6 +43,7 @@ async function runClusterManager() {
   })
 
   const topicClient = await mqManager.topicClient()
+  // TODO: need type strategy like rpc
   await topicClient.sub<MediaAgentLoad>(MEDIA_CLUSTER_NAME, 'load', (load) => {
     const preLoad = mediaAgentLoads.get(load.server)
     const workers: MediaServerLoad['workers'] = preLoad?.workers ?? new Map()

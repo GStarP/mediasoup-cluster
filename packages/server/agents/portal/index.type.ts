@@ -1,3 +1,4 @@
 export type SocketData = {
-  uid: string;
-};
+  uid: string
+  channel: string
+}

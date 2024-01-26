@@ -13,7 +13,6 @@ import type { SocketData } from './index.type'
 import { createServer } from 'http'
 import MQManager from '@/common/mq'
 import { CM_RPC_SERVER_NAME } from '@/agents/cluster-manager/rpc.type'
-import { MediaWorkerType } from '@/agents/media/index.type'
 
 async function runPortal() {
   const uuid = `portal@${v4()}`
@@ -51,6 +50,7 @@ async function runPortal() {
     try {
       const uid = v4()
       socket.data.uid = uid
+      socket.data.channel = channel
       socket.emit(PortalNotificationType.JOIN_SUCCESS, uid)
       logger.info(`socket connected: channel=${channel} uid=${uid}`)
     } catch (e) {
@@ -58,13 +58,13 @@ async function runPortal() {
       logger.error(e)
     }
 
-    socket.on(PortalReqType.ALLOC_MEDIA, async (callback) => {
+    socket.on(PortalReqType.ALLOC_MEDIA, async (type, callback) => {
       logger.info(`alloc media: uid=${socket.data.uid}`)
       const res = await rpcClient.request(
         CM_RPC_SERVER_NAME,
         PortalReqType.ALLOC_MEDIA,
         {
-          type: MediaWorkerType.PRODUCER,
+          type,
           uid: socket.data.uid,
         },
       )
@@ -124,6 +124,62 @@ async function runPortal() {
             tid,
             kind,
             rtp,
+          },
+        )
+        // TODO: error handling
+        callback({ code: 0, data: res })
+      },
+    )
+
+    // broadcast user-publish to all other users in the same channel
+    // TODO: similar forwarding may have easier way
+    socket.on(PortalNotificationType.USER_PUBLISH, async (payload) => {
+      logger.info(`forward USER_PUBLISH: ${JSON.stringify(payload)}`)
+      const sockets = await io.fetchSockets()
+      for (const sc of sockets) {
+        if (
+          sc.data.channel === payload.channel &&
+          sc.data.uid !== payload.uid
+        ) {
+          sc.emit(PortalNotificationType.USER_PUBLISH, payload)
+        }
+      }
+    })
+
+    socket.on(
+      PortalReqType.CREATE_RECV_TRANSPORT,
+      async (server, rid, callback) => {
+        logger.info(`create recv transport: server=${server} rid=${rid}`)
+        const res = await rpcClient.request(
+          server,
+          PortalReqType.CREATE_RECV_TRANSPORT,
+          {
+            uid: socket.data.uid,
+            rid,
+          },
+        )
+        // TODO: error handling
+        callback({ code: 0, data: res })
+      },
+    )
+
+    socket.on(
+      PortalReqType.CREATE_CONSUMER,
+      async (sid, rid, tid, pid, rtp, ssid, srid, callback) => {
+        logger.info(
+          `create consumer: sid=${sid} rid=${rid} tid=${tid} pid=${pid}`,
+        )
+        const res = await rpcClient.request(
+          sid,
+          PortalReqType.CREATE_CONSUMER,
+          {
+            uid: socket.data.uid,
+            rid,
+            tid,
+            pid,
+            rtp,
+            ssid,
+            srid,
           },
         )
         // TODO: error handling

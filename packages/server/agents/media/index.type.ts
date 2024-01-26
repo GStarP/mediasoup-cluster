@@ -1,3 +1,4 @@
+import { MediaWorkerType } from '@shared/portal.type'
 import type { Consumer } from 'mediasoup/node/lib/Consumer'
 import type { Producer } from 'mediasoup/node/lib/Producer'
 import type { Router } from 'mediasoup/node/lib/Router'
@@ -7,11 +8,6 @@ import type { WebRtcServer } from 'mediasoup/node/lib/types'
 
 export type MediaAgentConfig = {
   producerWorkerNum: number
-}
-
-export enum MediaWorkerType {
-  PRODUCER,
-  CONSUMER,
 }
 
 export type WorkerAppData = {

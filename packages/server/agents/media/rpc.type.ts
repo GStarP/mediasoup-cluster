@@ -1,6 +1,7 @@
-import { PortalReqType } from '@shared/portal.type'
+import { CreateConsumerRet, PortalReqType } from '@shared/portal.type'
 import type {
   MediaKind,
+  RtpCapabilities,
   RtpParameters,
 } from 'mediasoup-client/lib/RtpParameters'
 import type {
@@ -28,4 +29,19 @@ export type MediaServerPRCMethods = {
     kind: MediaKind
     rtp: RtpParameters
   }) => Promise<string>
+
+  [PortalReqType.CREATE_RECV_TRANSPORT]: (body: {
+    uid: string
+    rid: string
+  }) => Promise<TransportOptions>
+
+  [PortalReqType.CREATE_CONSUMER]: (body: {
+    uid: string
+    rid: string
+    tid: string
+    pid: string
+    rtp: RtpCapabilities
+    ssid: string
+    srid: string
+  }) => Promise<CreateConsumerRet>
 }

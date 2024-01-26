@@ -5,7 +5,7 @@ import type { Worker } from 'mediasoup/node/lib/types'
 import { createLogger } from '@/common/logger'
 import { cpus } from 'os'
 import { createWorker, getSupportedRtpCapabilities } from 'mediasoup'
-import { RouterAppData, MediaWorkerType, WorkerAppData } from './index.type'
+import { RouterAppData, WorkerAppData } from './index.type'
 import { routerOptions } from './options'
 import { numberReserve, safeStringify } from '@/common/utils'
 import { ClusterWorker } from '@/common/cluster/worker'
@@ -13,7 +13,7 @@ import type { MediaAgentLoad } from '@/agents/cluster-manager/cluster.type'
 import { currentLoad, mem } from 'systeminformation'
 import { MEDIA_CLUSTER_NAME } from './cluster.type'
 import type { MediaServerPRCMethods } from './rpc.type'
-import { PortalReqType } from '@shared/portal.type'
+import { MediaWorkerType, PortalReqType } from '@shared/portal.type'
 import { rpcFail, rpcSuccess } from '@/common/mq/rpc/utils'
 
 async function runMediaAgent() {
@@ -163,6 +163,109 @@ async function runMediaAgent() {
       worker.appData.producers.set(producer.id, producer)
 
       return rpcSuccess(producer.id)
+    },
+
+    // TODO: same as CREATE_SEND_TRANSPORT
+    [PortalReqType.CREATE_RECV_TRANSPORT]: async ({ uid, rid }) => {
+      logger.info(`CREATE_RECV_TRANSPORT: uid=${uid} rid=${rid}`)
+
+      const worker = workers.get(rid)
+      if (!worker || !worker.appData.webRtcServer || !worker.appData.router) {
+        const missingItem = worker
+          ? worker.appData.webRtcServer
+            ? worker.appData.router
+              ? ''
+              : 'router'
+            : 'webRtcServer'
+          : 'worker'
+        logger.error(`${missingItem} not ready`)
+        return rpcFail(`worker not ready: ${rid}`)
+      }
+
+      const transport = await worker.appData.router.createWebRtcTransport({
+        webRtcServer: worker.appData.webRtcServer,
+        enableUdp: true,
+        enableTcp: true,
+      })
+      worker.appData.transports.set(uid, transport)
+
+      return rpcSuccess({
+        id: transport.id,
+        iceParameters: transport.iceParameters,
+        iceCandidates: transport.iceCandidates,
+        dtlsParameters: transport.dtlsParameters,
+        sctpParameters: transport.sctpParameters,
+      })
+    },
+
+    [PortalReqType.CREATE_CONSUMER]: async ({
+      uid,
+      rid,
+      tid,
+      pid,
+      rtp,
+      ssid,
+      srid,
+    }) => {
+      logger.info(
+        `CREATE_CONSUMER: uid=${uid} rid=${rid} tid=${tid} pid=${pid}`,
+      )
+
+      const worker = workers.get(rid)
+      if (
+        !worker ||
+        worker.appData.type !== MediaWorkerType.CONSUMER ||
+        !worker.appData.router
+      )
+        return rpcFail(`worker not ready: ${rid}`)
+      const router = worker.appData.router
+
+      const transport = worker.appData.transports.get(uid)
+      if (!transport || transport.id !== tid) {
+        return rpcFail(`no such transport: ${tid}`)
+      }
+
+      // since canConsume will use producer, we must pipe producer now
+      // TODO: ignore ssid, now we only have single media server
+      const sourceWorker = workers.get(srid)
+
+      if (
+        !sourceWorker ||
+        sourceWorker.appData.type !== MediaWorkerType.PRODUCER ||
+        !sourceWorker.appData.router
+      )
+        return rpcFail(`source worker not ready: ${srid}`)
+      if (!sourceWorker.appData.producers.has(pid))
+        return rpcFail(`source producer not found: ${pid}`)
+      const sourceRouter = sourceWorker.appData.router
+      logger.info(
+        `pipeToRouter: from=${ssid}.${srid}.${pid} to=${uuid}.${rid}.${pid}`,
+      )
+      await sourceRouter.pipeToRouter({
+        producerId: pid,
+        router: router,
+      })
+
+      const canConsume = router.canConsume({
+        producerId: pid,
+        rtpCapabilities: rtp,
+      })
+      if (!canConsume) {
+        return rpcFail('cannot consume')
+      }
+
+      const consumer = await transport.consume({
+        producerId: pid,
+        rtpCapabilities: rtp,
+      })
+      worker.appData.consumers.set(consumer.id, consumer)
+
+      return rpcSuccess({
+        id: consumer.id,
+        pid: pid,
+        kind: consumer.kind,
+        rtp: consumer.rtpParameters,
+      })
     },
   })
 

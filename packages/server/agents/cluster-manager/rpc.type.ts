@@ -1,5 +1,8 @@
-import type { MediaWorkerType } from '@/agents/media/index.type'
-import type { AllocMediaRet, PortalReqType } from '@shared/portal.type'
+import type {
+  AllocMediaRet,
+  MediaWorkerType,
+  PortalReqType,
+} from '@shared/portal.type'
 
 export const CM_RPC_SERVER_NAME = 'rpc.cm'
 
